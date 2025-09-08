@@ -17,7 +17,7 @@ class Config:
     # 本地
     # SQLALCHEMY_DATABASE_URI = 'mysql+pymysql://root:gaojingyue813!%40@localhost:3306/toubiao_db?charset=utf8mb4'
     # todo： 在这里创建你的MySQL数据库连接，我使用的是navicat，你随意
-    SQLALCHEMY_DATABASE_URI = 'mysql+pymysql://root:gaojingyue813!%40@localhost:3306/yngh_new?charset=utf8mb4'
+    SQLALCHEMY_DATABASE_URI = '/////////////////////'
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     # ecs上的mysql
     # SQLALCHEMY_DATABASE_URI = 'mysql+pymysql://admin:gaojingyue813!@47.108.137.36:3306/toubiao_db?charset=utf8mb4'
@@ -26,17 +26,17 @@ class Config:
 
     # ============ 管理员信息 ============
     # 使用generate_password_hash()加密管理员密码
-    ADMIN_USERNAME = os.environ.get("ADMIN_USERNAME", "yngh")
-    ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD", generate_password_hash("yngh123"))  # 默认密码加密
-    ADMIN_EMAIL = "shaun7565@163.com"  # 可用于邮件回执或通知抄送
+    ADMIN_USERNAME = os.environ.get("ADMIN_USERNAME", "!!!!")
+    ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD", generate_password_hash("^^^^^^^^^^^"))  # 默认密码加密
+    ADMIN_EMAIL = "%%%%%%%%@163.com"  # 可用于邮件回执或通知抄送
 
     # ============ 企业邮箱配置 ============
     # 企业邮箱配置（此处为163邮箱）
     MAIL_SERVER = "smtp.163.com"  # 163邮箱的SMTP服务器地址
     MAIL_PORT = 465  # 163 邮箱使用 SSL 时，端口是 465
     MAIL_USE_SSL = True  # 开启 SSL 加密
-    MAIL_USERNAME = "ghzb2006@163.com"  # 你的163邮箱地址
-    MAIL_PASSWORD = "KYevz4u4UbksQ6yD"  # 163邮箱的授权码
+    MAIL_USERNAME = "$$$$$@163.com"  # 你的163邮箱地址
+    MAIL_PASSWORD = "!!!!!!!!!!!!!!!"  # 163邮箱的授权码
     MAIL_DEFAULT_SENDER = MAIL_USERNAME  # 默认发件人（这里通常和 MAIL_USERNAME 相同）    MAIL_SERVER = "smtp.163.com"  # 163邮箱的SMTP服务器地址
 
     # MAIL_SERVER = "smtp.qq.com"  # 邮箱服务商
@@ -56,8 +56,8 @@ class Config:
 
     # ============ 阿里云网盘oss API 相关 ============
     # config.py 中新增
-    OSS_ACCESS_KEY_ID = os.getenv("OSS_ACCESS_KEY_ID", "LTAI5tKGX7wvPkqPYEdqSnDA")
-    OSS_ACCESS_KEY_SECRET = os.getenv("OSS_ACCESS_KEY_SECRET", "F0A6Sr45gaN0itvIMWV5hftOoqiVvP")
+    OSS_ACCESS_KEY_ID = os.getenv("OSS_ACCESS_KEY_ID", "*************")
+    OSS_ACCESS_KEY_SECRET = os.getenv("OSS_ACCESS_KEY_SECRET", "###############")
     OSS_ENDPOINT = "https://oss-cn-chengdu.aliyuncs.com"  # 替换为你的 Endpoint
     OSS_BUCKET_NAME = "yunnanguoheft-oss"  # 替换为你的 Bucket 名称
 
@@ -74,3 +74,4 @@ class Config:
 
     # ============ 定时任务（保留项） ============
     CLEANUP_INTERVAL_DAYS = 30  # 每30天上传一次数据备份并清理本地缓存
+
