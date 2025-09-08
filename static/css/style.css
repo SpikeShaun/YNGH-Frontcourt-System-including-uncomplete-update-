@@ -1,0 +1,73 @@
+/* 全局字体与基本颜色 */
+body {
+    font-family: "Microsoft YaHei", sans-serif;
+    color: #212529;
+    background-color: #f5f5f5;
+    line-height: 1.6;
+}
+
+/* 表单输入框圆角美化 */
+input[type="text"],
+input[type="email"],
+input[type="password"],
+input[type="number"],
+input[type="datetime-local"],
+select,
+textarea {
+    border-radius: 8px;
+    padding: 10px;
+    border: 1px solid #ced4da;
+    transition: border-color 0.3s ease-in-out;
+}
+
+input:focus,
+textarea:focus,
+select:focus {
+    border-color: #0d6efd;
+    outline: none;
+}
+
+/* 提交按钮统一风格 */
+button,
+.btn {
+    border-radius: 6px;
+    transition: all 0.3s ease-in-out;
+}
+
+.btn:hover {
+    transform: scale(1.02);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+/* 卡片盒子 */
+.card-box,
+.overlay,
+.panel,
+.login-card,
+.container-box,
+.confirm-box {
+    background-color: rgba(255, 255, 255, 0.96);
+    border-radius: 14px;
+    padding: 30px;
+    box-shadow: 0 0 15px rgba(0,0,0,0.15);
+}
+
+/* 表单段落标题 */
+.form-label {
+    font-weight: bold;
+    color: #495057;
+}
+
+/* 倒计时数字大一些 */
+#countdown {
+    font-size: 1.4rem;
+    color: #d63384;
+    font-weight: bold;
+}
+
+/* 响应式居中控制 */
+@media (max-width: 768px) {
+    .card-box, .overlay, .panel {
+        padding: 20px;
+    }
+}
