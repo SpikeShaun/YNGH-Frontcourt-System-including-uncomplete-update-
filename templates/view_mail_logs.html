@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <link rel="icon" href="{{ url_for('static', filename='bid.png') }}" type="image/png">
+    <title>邮件发送记录 - 云南国合开标系统</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <!-- Bootstrap 5 -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body {
+            /*background: url("../static/img/email_logs_bg.jpg") no-repeat center center fixed;*/
+            background-size: cover;
+            font-family: "Microsoft YaHei", sans-serif;
+        }
+
+        .panel {
+            background-color: rgba(255, 255, 255, 0.95);
+            padding: 30px;
+            border-radius: 14px;
+            max-width: 1200px;
+            margin: 5vh auto;
+            box-shadow: 0 0 16px rgba(0, 0, 0, 0.2);
+        }
+
+        .admin-logout-btn {
+            position: fixed;
+            top: 10px;
+            right: 10px;
+            z-index: 1000;
+        }
+
+        .logs-list {
+            max-height: 700px;
+            overflow-y: auto;
+        }
+    </style>
+    <style>
+        /* 让失败记录行背景浅红色 */
+        .failed-row {
+            background-color: rgba(255, 0, 0, 0.08); /* 浅红色 */
+        }
+    </style>
+    <style>
+        .logs-table-wrapper {
+            max-height: 700px;
+            overflow-y: auto;
+            padding-right: 10px;
+        }
+    </style>
+
+</head>
+<body>
+
+
+<div class="d-flex justify-content-between align-items-center px-3"
+     style="position: fixed; top: 10px; left: 0; right: 0; z-index: 1000;">
+    <a href="{{ url_for('admin_panel') }}" class="btn btn-outline-secondary">🏠 返回项目管理</a>
+    <!--    <a href="{{ url_for('logout') }}" class="btn btn-outline-primary">退出登录</a>-->
+</div>
+
+<div class="panel">
+    <h3 class="mb-4">📨 项目邮件发送记录</h3>
+
+    <form method="POST" class="row g-3 mb-4">
+        <div class="col-auto">
+            <input type="datetime-local" name="start_time" class="form-control" required>
+        </div>
+        <div class="col-auto">
+            <input type="datetime-local" name="end_time" class="form-control" required>
+        </div>
+        <div class="col-auto">
+            <button type="submit" class="btn btn-outline-primary">筛选时间范围</button>
+        </div>
+    </form>
+    <div class="mb-3">
+        <input type="text" id="project-filter" class="form-control" placeholder="🔍 输入项目名称或编号进行筛选">
+    </div>
+
+    <div class="mb-3">
+        <button id="toggle-failed-btn" class="btn btn-outline-danger btn-sm">只看失败记录</button>
+        <a href="{{ url_for('export_mail_logs') }}" class="btn btn-outline-success btn-sm">📤 导出全部邮件记录 Excel</a>
+
+    </div>
+
+    {% if logs %}
+    <div class="logs-list">
+        <div class="logs-table-wrapper" style="max-height: 700px; overflow-y: auto;">
+            <table class="table table-striped table-bordered">
+                <thead class="table-light">
+                <tr>
+                    <th scope="col">序号</th>
+                    <th scope="col">发送时间</th>
+                    <th scope="col">项目名称</th>   <!-- ✅ 新增 -->
+                    <th scope="col">项目编号</th> <!-- ✅ 新加 -->
+                    <th scope="col">状态</th>
+                    <th scope="col">信息</th>
+                </tr>
+                </thead>
+                <tbody>
+                {% for log in logs %}
+                <tr class="{% if log.status == 'failed' %}failed-row{% endif %}">
+                    <th scope="row">{{ loop.index }}</th>
+                    <td>{{ log.sent_at.strftime('%Y-%m-%d %H:%M:%S') }}</td>
+<!--                    <td>-->
+<!--                        {% if log.project %}-->
+<!--                        {{ log.project.name }}-->
+<!--                        {% else %}-->
+<!--                        无关联项目-->
+<!--                        {% endif %}-->
+<!--                    </td>-->
+<!--                    <td>-->
+<!--                        {% if log.project %}-->
+<!--                        {{ log.project.code }}-->
+<!--                        {% else %}-->
+<!--                        无编号-->
+<!--                        {% endif %}-->
+<!--                    </td>-->
+                    <td>
+                        {% if log.sub_project and log.sub_project.project %}
+                        {{ log.sub_project.project.name }}
+                        {% else %}
+                        无关联项目
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if log.sub_project and log.sub_project.project %}
+                        {{ log.sub_project.project.code }}
+                        {% else %}
+                        无编号
+                        {% endif %}
+                    </td>
+
+
+                    <td>
+                        {% if log.status == "success" %}
+                        <span class="badge bg-success">成功</span>
+                        {% else %}
+                        <span class="badge bg-danger">失败</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {{ log.message }}
+                        {% if log.status == "failed" %}
+                        <form method="POST" action="{{ url_for('retry_mail', log_id=log.id) }}" style="display:inline;">
+                            <button type="submit" class="btn btn-sm btn-danger ms-2">🔄 重发</button>
+                        </form>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% else %}
+    <p>暂无任何邮件发送记录。</p>
+    {% endif %}
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const toggleBtn = document.getElementById('toggle-failed-btn');
+        const projectFilterInput = document.getElementById('project-filter');
+        let showingFailedOnly = false;
+
+        toggleBtn.addEventListener('click', function () {
+            const rows = document.querySelectorAll('.logs-list tbody tr');
+
+            if (!showingFailedOnly) {
+                // 只显示失败记录
+                rows.forEach(row => {
+                    // const statusCell = row.querySelector('td:nth-child(4)');  // ✅ 注意是第4列状态
+                    // todo:不确定是否对
+                    const statusCell = row.querySelector('td:nth-child(5)');
+                    if (!statusCell.innerText.includes('失败')) {
+                        row.style.display = 'none';
+                    }
+                });
+                toggleBtn.textContent = '显示全部记录';
+                showingFailedOnly = true;
+            } else {
+                // 显示全部
+                rows.forEach(row => {
+                    row.style.display = '';
+                });
+                toggleBtn.textContent = '只看失败记录';
+                showingFailedOnly = false;
+            }
+        });
+
+        projectFilterInput.addEventListener('input', function () {
+            const keyword = projectFilterInput.value.trim().toLowerCase();
+            const rows = document.querySelectorAll('.logs-list tbody tr');
+
+            rows.forEach(row => {
+                const projectNameCell = row.querySelector('td:nth-child(3)');
+                const projectCodeCell = row.querySelector('td:nth-child(4)');
+                const messageCell = row.querySelector('td:nth-child(6)');
+
+                const combinedText = (
+                    (projectNameCell?.innerText || '') + ' ' +
+                    (projectCodeCell?.innerText || '') + ' ' +
+                    (messageCell?.innerText || '')
+                ).toLowerCase();
+
+                if (combinedText.includes(keyword)) {
+                    row.style.display = '';
+                } else {
+                    row.style.display = 'none';
+                }
+            });
+        });
+    });
+</script>
+
+</body>
+</html>

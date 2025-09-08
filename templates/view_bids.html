@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <link rel="icon" href="{{ url_for('static', filename='bid.png') }}" type="image/png">
+    <title>客户登记信息 - {{ project.name }}{% if sub_project %} / {{ sub_project.segment_name }}{% endif %}</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <!-- Bootstrap 5 -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body {
+            background: url("/static/img/bg_admin.jpg") no-repeat center center fixed;
+            background-size: cover;
+            font-family: "Microsoft YaHei", sans-serif;
+        }
+
+        .container-box {
+            background-color: rgba(255, 255, 255, 0.95);
+            padding: 30px;
+            margin: 5vh auto;
+            border-radius: 14px;
+            max-width: 1000px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.15);
+        }
+
+        @keyframes flash-once {
+            0% { opacity: 0; }
+            50% { opacity: 1; }
+            100% { opacity: 1; }
+        }
+
+        .flash-once {
+            animation: flash-once 1s ease-in-out;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container-box">
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+    {% for category, message in messages %}
+    <div class="alert alert-{{ category }} alert-dismissible fade show flash-message flash-once" role="alert">
+        {{ message }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+    {% endfor %}
+    {% endif %}
+    {% endwith %}
+
+    <div class="d-flex justify-content-between align-items-start mb-4">
+        <div>
+            <h4 class="mb-1">📁 项目编号：{{ project.code }} | {{ project.name }}</h4>
+            {% if sub_project %}
+            <h5 class="mb-2">📄 所属标段：{{ sub_project.segment_name }} | 招标内容：{{ sub_project.description or '（未填写）' }}</h5>
+            <p class="text-muted mb-2">⏳ 截止时间：{{ sub_project.deadline.strftime('%Y年%m月%d日 %H:%M') }}</p>
+            {% else %}
+            <p class="text-muted mb-2">⏳ 截止时间：{{ project.deadline.strftime('%Y年%m月%d日 %H:%M') }}</p>
+            {% endif %}
+            <a href="{{ url_for('admin_panel') }}" class="btn btn-secondary btn-sm">← 返回控制面板</a>
+        </div>
+
+        <div class="ms-3" style="width: 300px;">
+            <input type="text" id="searchSupplierInput" class="form-control" placeholder="🔍 搜索投标单位">
+        </div>
+    </div>
+
+    {% if grouped_bids %}
+    {% for group in grouped_bids %}
+        <div class="mb-4">
+            <h5 class="text-primary">📄 标段：{{ group.subproject.segment_name }}</h5>
+            <p class="text-muted">⏳ 截止时间：{{ group.subproject.deadline.strftime('%Y年%m月%d日 %H:%M') }}</p>
+
+            {% if group.bids %}
+            <div class="accordion mb-3" id="bidsAccordion_{{ group.subproject.id }}">
+                {% for bid in group.bids %}
+                <div class="accordion-item customer-card" data-name="{{ bid.supplier_name }}">
+                    <h2 class="accordion-header" id="heading{{ bid.id }}">
+                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse"
+                                data-bs-target="#collapse{{ bid.id }}" aria-expanded="false"
+                                aria-controls="collapse{{ bid.id }}">
+                            投标单位：{{ bid.supplier_name }}（{{ "已缴费 ✅" if bid.is_paid else "未缴费 ❌" }} )
+                        </button>
+                    </h2>
+                    <div id="collapse{{ bid.id }}" class="accordion-collapse collapse" aria-labelledby="heading{{ bid.id }}"
+                         data-bs-parent="#bidsAccordion_{{ group.subproject.id }}">
+                        <div class="accordion-body">
+                            <p><strong>单位名称：</strong> {{ bid.supplier_name }}</p>
+                            <p><strong>统一社会信用代码：</strong> {{ bid.credit_code }}</p>
+                            <p><strong>联系人：</strong> {{ bid.agent }}</p>
+                            <p><strong>联系电话：</strong> {{ bid.phone }}</p>
+                            <p><strong>邮箱：</strong> {{ bid.email }}</p>
+                            <p><strong>报名时间：</strong> {{ bid.file_time or '—' }}</p>
+
+                            <div class="mt-3 d-flex gap-2">
+                                {% if not bid.is_paid %}
+                                <a href="{{ url_for('edit_bid', bid_id=bid.id) }}" class="btn btn-sm btn-outline-primary">✏ 修改</a>
+                                {% endif %}
+                                <form method="POST" action="{{ url_for('delete_bid', bid_id=bid.id) }}" onsubmit="return confirm('确认删除这条投标记录？');">
+                                    <button type="submit" class="btn btn-sm btn-outline-danger">🗑 删除</button>
+                                </form>
+                                {% if bid.is_paid %}
+                                <form method="POST" action="{{ url_for('resend_email', bid_id=bid.id) }}">
+                                    <button type="submit" class="btn btn-sm btn-outline-success">📧 重新发送邮件</button>
+                                </form>
+                                {% endif %}
+                            </div>
+
+                            {% if not bid.is_paid %}
+                            <form method="POST" action="{{ url_for('mark_paid', bid_id=bid.id) }}">
+                                <div class="d-grid gap-2 col-8 mx-auto mt-4">
+                                    <button type="submit" class="btn btn-primary">去确认缴费情况</button>
+                                </div>
+                            </form>
+                            {% else %}
+                            <div class="alert alert-success mt-3">邮件已发送，客户已缴费 ✅</div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+                <div class="alert alert-info">该标段暂无客户登记信息。</div>
+            {% endif %}
+        </div>
+    {% endfor %}
+{% else %}
+    <div class="alert alert-warning">该项目暂无任何标段或登记信息。</div>
+{% endif %}
+
+
+</div>
+
+<!-- Bootstrap JS -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+
+<script>
+  window.addEventListener('DOMContentLoaded', function () {
+    setTimeout(function () {
+      const flashMessages = document.querySelectorAll('.flash-message');
+      flashMessages.forEach(function (msg) {
+        let alert = bootstrap.Alert.getOrCreateInstance(msg);
+        alert.close();
+      });
+    }, 5000);
+
+    const searchInput = document.getElementById('searchSupplierInput');
+    const customerCards = document.querySelectorAll('.customer-card');
+
+    searchInput.addEventListener('input', function () {
+        const keyword = this.value.trim().toLowerCase();
+
+        customerCards.forEach(function (card) {
+            const name = card.getAttribute('data-name').toLowerCase();
+            if (name.includes(keyword)) {
+                card.style.display = '';
+            } else {
+                card.style.display = 'none';
+            }
+        });
+    });
+  });
+</script>
+
+</body>
+</html>
+
+
+
+<!--<!DOCTYPE html>-->
+<!--<html lang="zh-CN">-->
+<!--<head>-->
+<!--    <meta charset="UTF-8">-->
+<!--    <link rel="icon" href="{{ url_for('static', filename='bid.png') }}" type="image/png">-->
+<!--    <title>客户登记信息 - {{ project.name }}</title>-->
+<!--    <meta name="viewport" content="width=device-width, initial-scale=1">-->
+<!--    &lt;!&ndash; Bootstrap 5 &ndash;&gt;-->
+<!--    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">-->
+<!--    <style>-->
+<!--        body {-->
+<!--            background: url("/static/img/bg_admin.jpg") no-repeat center center fixed;-->
+<!--            background-size: cover;-->
+<!--            font-family: "Microsoft YaHei", sans-serif;-->
+<!--        }-->
+
+<!--        .container-box {-->
+<!--            background-color: rgba(255, 255, 255, 0.95);-->
+<!--            padding: 30px;-->
+<!--            margin: 5vh auto;-->
+<!--            border-radius: 14px;-->
+<!--            max-width: 1000px;-->
+<!--            box-shadow: 0 0 10px rgba(0, 0, 0, 0.15);-->
+<!--        }-->
+
+<!--        @keyframes flash-once {-->
+<!--            0% { opacity: 0; }-->
+<!--            50% { opacity: 1; }-->
+<!--            100% { opacity: 1; }-->
+<!--        }-->
+
+<!--        .flash-once {-->
+<!--            animation: flash-once 1s ease-in-out;-->
+<!--        }-->
+<!--    </style>-->
+<!--</head>-->
+<!--<body>-->
+
+<!--<div class="container-box">-->
+
+<!--    {% with messages = get_flashed_messages(with_categories=true) %}-->
+<!--    {% if messages %}-->
+<!--    {% for category, message in messages %}-->
+<!--    <div class="alert alert-{{ category }} alert-dismissible fade show flash-message flash-once" role="alert">-->
+<!--        {{ message }}-->
+<!--        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>-->
+<!--    </div>-->
+<!--    {% endfor %}-->
+<!--    {% endif %}-->
+<!--    {% endwith %}-->
+
+<!--    <div class="d-flex justify-content-between align-items-center mb-4">-->
+<!--        <div>-->
+<!--            <h3>📄 客户登记信息 - {{ project.code }}</h3>-->
+<!--            <p>项目名称：{{ project.name }}</p>-->
+<!--            <a href="{{ url_for('admin_panel') }}" class="btn btn-secondary btn-sm">← 返回控制面板</a>-->
+<!--        </div>-->
+
+<!--        <div class="ms-3" style="width: 300px;">-->
+<!--            <input type="text" id="searchSupplierInput" class="form-control" placeholder="🔍 搜索投标单位">-->
+<!--        </div>-->
+<!--    </div>-->
+
+<!--    {% if bids %}-->
+<!--    <div id="customerListContainer">-->
+<!--        <div class="accordion" id="bidsAccordion">-->
+<!--            {% for bid in bids %}-->
+<!--            <div class="accordion-item customer-card" data-name="{{ bid.supplier_name }}">-->
+<!--                <h2 class="accordion-header" id="heading{{ bid.id }}">-->
+<!--                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse"-->
+<!--                            data-bs-target="#collapse{{ bid.id }}" aria-expanded="false"-->
+<!--                            aria-controls="collapse{{ bid.id }}">-->
+<!--                        投标单位：{{ bid.supplier_name }}（{{ "已缴费 ✅" if bid.is_paid else "未缴费 ❌" }})-->
+<!--                    </button>-->
+<!--                </h2>-->
+<!--                <div id="collapse{{ bid.id }}" class="accordion-collapse collapse" aria-labelledby="heading{{ bid.id }}"-->
+<!--                     data-bs-parent="#bidsAccordion">-->
+<!--                    <div class="accordion-body">-->
+<!--                        <p><strong>统一社会信用代码：</strong> {{ bid.credit_code }}</p>-->
+<!--                        <p><strong>地址：</strong> {{ bid.supplier_address }}</p>-->
+<!--                        <p><strong>法定代表人：</strong> {{ bid.legal_person }}</p>-->
+<!--                        <p><strong>委托代理人：</strong> {{ bid.agent }}</p>-->
+<!--                        <p><strong>手机：</strong> {{ bid.phone }}</p>-->
+<!--                        <p><strong>邮箱：</strong> {{ bid.email }}</p>-->
+<!--                        <p><strong>获取文件方式：</strong> {{ bid.file_method }}</p>-->
+<!--                        <p><strong>获取文件时间：</strong> {{ bid.file_time }}</p>-->
+
+<!--                        <div class="mt-3 d-flex gap-2">-->
+<!--                            {% if not bid.is_paid %}-->
+<!--                            <a href="{{ url_for('edit_bid', bid_id=bid.id) }}" class="btn btn-sm btn-outline-primary">✏ 修改</a>-->
+<!--                            {% endif %}-->
+<!--                            <form method="POST" action="{{ url_for('delete_bid', bid_id=bid.id) }}" onsubmit="return confirm('确认删除这条投标记录？');">-->
+<!--                                <button type="submit" class="btn btn-sm btn-outline-danger">🗑 删除</button>-->
+<!--                            </form>-->
+
+<!--                            {% if bid.is_paid %}-->
+<!--                            <form method="POST" action="{{ url_for('resend_email', bid_id=bid.id) }}">-->
+<!--                                <button type="submit" class="btn btn-sm btn-outline-success">📧 重新发送邮件</button>-->
+<!--                            </form>-->
+<!--                            {% endif %}-->
+<!--                        </div>-->
+
+<!--                        {% if not bid.is_paid %}-->
+<!--                        <form method="POST" action="{{ url_for('mark_paid', bid_id=bid.id) }}">-->
+<!--                            <div class="d-grid gap-2 col-8 mx-auto mt-4">-->
+<!--                                <button type="submit" class="btn btn-primary">去确认缴费情况</button>-->
+<!--                            </div>-->
+<!--                        </form>-->
+<!--                        {% else %}-->
+<!--                        <div class="alert alert-success mt-3">邮件已发送，客户已缴费 ✅</div>-->
+<!--                        {% endif %}-->
+<!--                    </div>-->
+<!--                </div>-->
+<!--            </div>-->
+<!--            {% endfor %}-->
+<!--        </div>-->
+<!--    </div>-->
+<!--    {% else %}-->
+<!--    <div class="alert alert-info">当前项目暂无客户登记信息。</div>-->
+<!--    {% endif %}-->
+
+<!--</div>-->
+
+<!--&lt;!&ndash; Bootstrap JS &ndash;&gt;-->
+<!--<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>-->
+
+<!--<script>-->
+<!--  window.addEventListener('DOMContentLoaded', function () {-->
+<!--    setTimeout(function () {-->
+<!--      const flashMessages = document.querySelectorAll('.flash-message');-->
+<!--      flashMessages.forEach(function (msg) {-->
+<!--        let alert = bootstrap.Alert.getOrCreateInstance(msg);-->
+<!--        alert.close();-->
+<!--      });-->
+<!--    }, 5000);-->
+
+<!--    const searchInput = document.getElementById('searchSupplierInput');-->
+<!--    const customerCards = document.querySelectorAll('.customer-card');-->
+
+<!--    searchInput.addEventListener('input', function () {-->
+<!--        const keyword = this.value.trim().toLowerCase();-->
+
+<!--        customerCards.forEach(function (card) {-->
+<!--            const name = card.getAttribute('data-name').toLowerCase();-->
+<!--            if (name.includes(keyword)) {-->
+<!--                card.style.display = '';-->
+<!--            } else {-->
+<!--                card.style.display = 'none';-->
+<!--            }-->
+<!--        });-->
+<!--    });-->
+<!--  });-->
+<!--</script>-->
+
+<!--</body>-->
+<!--</html>-->

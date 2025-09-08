@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <link rel="icon" href="{{ url_for('static', filename='bid.png') }}" type="image/png">
+    <title>提交成功 - 云南国合开标系统</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <!-- Bootstrap 5 -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body {
+            background: url("/static/img/bg.jpg") no-repeat center center fixed;
+            background-size: cover;
+            font-family: "Microsoft YaHei", sans-serif;
+        }
+
+        .card-box {
+            background-color: rgba(255, 255, 255, 0.95);
+            padding: 40px;
+            max-width: 700px;
+            margin: 10vh auto;
+            border-radius: 16px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.15);
+            text-align: center;
+        }
+    </style>
+    <script>
+        let seconds = 20;
+
+        function countdown() {
+            if (seconds <= 0) {
+                // 清空 session 数据后自动跳转到首页
+                window.location.href = "/";  // 跳回首页后清空数据
+            } else {
+                document.getElementById("countdown").innerText = seconds;
+                seconds--;
+                setTimeout(countdown, 1000);
+            }
+        }
+
+        window.onload = countdown;
+    </script>
+</head>
+<body>
+
+<div class="card-box">
+<!--    <h3 class="text-success">✅ 信息提交成功！</h3>-->
+    {% if message %}
+      <div class="alert alert-{{ message_type }} mt-3">
+        <h4 class="mb-0">{{ message }}</h4>
+      </div>
+    {% endif %}
+    <p class="mt-3">您可以确认填写无误后去财务缴费。</p>
+    <p class="text-muted">系统将在 <span id="countdown">20</span> 秒后自动跳转到首页。</p>
+<!--    {% if message %}-->
+<!--      <div class="alert alert-{{ message_type }} mt-2">{{ message }}</div>-->
+<!--    {% endif %}-->
+
+
+
+    <!-- 显示客户填写的内容 -->
+    <div class="mt-4 text-left">
+        <p><strong>项目编号：</strong> {{ data['project_code'] }}</p>
+        <p><strong>投标单位名称：</strong> {{ data['supplier_name'] }}</p>
+        <p><strong>投标单位地址：</strong> {{ data['supplier_address'] }}</p>
+        <p><strong>法定代表人：</strong> {{ data['legal_person'] }}</p>
+        <p><strong>统一社会信用代码：</strong> {{ data['credit_code'] }}</p>
+        <p><strong>委托代理人：</strong> {{ data['agent'] }}</p>
+        <p><strong>手机号码：</strong> {{ data['phone'] }}</p>
+        <p><strong>电子邮箱：</strong> {{ data['email'] }}</p>
+        <p><strong>获取文件方式：</strong> {{ data['file_method'] }}</p>
+        <p><strong>提交时间：</strong> {{ data['file_time'] }}</p>
+    </div>
+
+    <div class="d-flex justify-content-center gap-3 mt-4">
+        <!-- 返回修改按钮（改为 GET 方法） -->
+        <form method="GET" action="/edit_last_bid">
+            <button type="submit" class="btn btn-outline-warning">← 返回修改</button>
+        </form>
+        <!-- 确认无误，去缴费按钮 -->
+        <form method="POST" action="/confirm_submission">
+            <button type="submit" class="btn btn-primary">✔️ 确认无误，去缴费</button>
+        </form>
+    </div>
+</div>
+
+<!-- Bootstrap JS -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

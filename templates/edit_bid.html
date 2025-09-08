@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <link rel="icon" href="{{ url_for('static', filename='bid.png') }}" type="image/png">
+    <title>编辑投标登记信息 - 云南国合开标系统</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+
+    <style>
+        body {
+            background: url("/static/img/bg_admin.jpg") no-repeat center center fixed;
+            background-size: cover;
+            font-family: "Microsoft YaHei", sans-serif;
+        }
+
+        .panel {
+            background-color: rgba(255, 255, 255, 0.95);
+            padding: 30px;
+            border-radius: 14px;
+            max-width: 800px;
+            margin: 5vh auto;
+            box-shadow: 0 0 16px rgba(0, 0, 0, 0.2);
+        }
+
+        .error-message {
+            color: red;
+            font-size: 14px;
+            margin-top: 5px;
+        }
+
+        @keyframes flash-once {
+            0% {
+                opacity: 0;
+            }
+            50% {
+                opacity: 1;
+            }
+            100% {
+                opacity: 1;
+            }
+        }
+
+        .flash-once {
+            animation: flash-once 1s ease-in-out;
+        }
+    </style>
+</head>
+
+<body>
+
+<div class="container mt-3">
+    {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+    {% for category, message in messages %}
+    <div class="alert alert-{{ category }} alert-dismissible fade show flash-message flash-once" role="alert">
+        {{ message }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+    {% endfor %}
+    {% endif %}
+    {% endwith %}
+</div>
+
+<div class="panel">
+
+    {% if bid.is_paid %}
+    <div class="alert alert-danger" role="alert">
+        当前客户已缴费并发送招标文件，不能修改登记信息。
+    </div>
+    {% endif %}
+
+    <h3 class="mb-4">✏️ 编辑投标登记信息</h3>
+
+    <form method="POST" class="row g-3">
+        <div class="col-12">
+            <label class="form-label">投标单位名称</label>
+            <input type="text" class="form-control" name="supplier_name" id="supplier_name"
+                   value="{{ bid.supplier_name }}" required
+                   {% if bid.is_paid %}readonly{% endif %}>
+            <div id="supplier_name_error" class="error-message" style="display:none;">
+                ❌ 当前项目中已存在相同的投标单位名称，请勿重复。
+            </div>
+        </div>
+
+        <div class="col-12">
+            <label class="form-label">统一社会信用代码</label>
+            <input type="text" class="form-control" name="credit_code" id="credit_code" maxlength="18"
+                   value="{{ bid.credit_code }}" required
+                   placeholder="系统可自动转大写字母"
+                   {% if bid.is_paid %}readonly{% endif %}>
+            <div id="credit_code_error" class="error-message" style="display:none;">
+                ❌ 当前项目中已存在相同的统一社会信用代码，请勿重复。
+            </div>
+           <!--             ✅ 错误提示区开始（就在输入框下）-->
+            <!-- 非法字符（I/O/Z/S/V）提示 -->
+            <div id="credit_code_illegal_letter_error" class="error-message"
+                 style="color: red; font-size: 14px; margin-top: 5px; display: none;">
+                ❌ 统一社会信用代码中不能包含 I、O、Z、S、V！
+            </div>
+            <!-- 非字母数字的特殊字符提示 -->
+            <div id="credit_code_special_char_error" class="error-message"
+                 style="color: red; font-size: 14px; margin-top: 5px; display: none;">
+                ❌ 统一社会信用代码只能输入数字和大写英文字母，不能包含特殊字符！
+            </div>
+            <div id="credit_code_length_error" class="error-message"
+                 style="color: blueviolet; font-size: 14px; margin-top: 5px; display: none;">
+                统一社会信用代码必须是18位！
+            </div>
+            <!-- ✅ 错误提示区结束 -->
+
+        </div>
+
+        <div class="col-12">
+            <label class="form-label">地址</label>
+            <input type="text" class="form-control" name="supplier_address"
+                   value="{{ bid.supplier_address }}"
+                   {% if bid.is_paid %}readonly{% endif %}>
+        </div>
+
+        <div class="col-12">
+            <label class="form-label">法定代表人</label>
+            <input type="text" class="form-control" name="legal_person"
+                   value="{{ bid.legal_person }}"
+                   {% if bid.is_paid %}readonly{% endif %}>
+        </div>
+
+        <div class="col-12">
+            <label class="form-label">联系人</label>
+            <input type="text" class="form-control" name="agent"
+                   value="{{ bid.agent }}"
+                   {% if bid.is_paid %}readonly{% endif %}>
+        </div>
+
+        <div class="col-12">
+            <label class="form-label">联系电话</label>
+            <input type="text" class="form-control" name="phone"
+                   value="{{ bid.phone }}" required
+                   {% if bid.is_paid %}readonly{% endif %}>
+        </div>
+
+        <div class="col-12">
+            <label class="form-label">电子邮箱</label>
+            <input type="email" class="form-control" name="email"
+                   value="{{ bid.email }}" required
+                   {% if bid.is_paid %}readonly{% endif %}>
+        </div>
+
+        <div class="col-12">
+            <label class="form-label">文件获取方式</label>
+            <input type="text" class="form-control" name="file_method"
+                   value="{{ bid.file_method }}"
+                   {% if bid.is_paid %}readonly{% endif %}>
+        </div>
+
+        <div class="col-12">
+            <label class="form-label">文件获取时间</label>
+            <input type="text" class="form-control" name="file_time"
+                   value="{{ bid.file_time }}"
+                   {% if bid.is_paid %}readonly{% endif %}>
+        </div>
+
+        {% if not bid.is_paid %}
+        <div class="col-12 text-end">
+            <button type="submit" class="btn btn-success w-100" id="submit_button">💾 确认修改</button>
+        </div>
+        {% endif %}
+    </form>
+
+    <div class="mt-3">
+        <a href="{{ url_for('view_bids', project_id=bid.sub_project.project_id) }}" class="btn btn-outline-secondary w-100">
+            ⬅️ 返回客户列表
+        </a>
+
+<!--        <a href="{{ url_for('view_bids', project_id=bid.project_id) }}" class="btn btn-outline-secondary w-100">-->
+<!--            ⬅️ 返回客户列表-->
+<!--        </a>-->
+    </div>
+
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+
+<script>
+    // 5秒后自动关闭flash消息
+    window.addEventListener('DOMContentLoaded', function () {
+        setTimeout(function () {
+            const flashMessages = document.querySelectorAll('.flash-message');
+            flashMessages.forEach(function (msg) {
+                let alert = bootstrap.Alert.getOrCreateInstance(msg);
+                alert.close();
+            });
+        }, 5000);
+    });
+
+    // 动态检查是否有重复单位名称或信用代码
+    document.addEventListener('DOMContentLoaded', function () {
+        const supplierNameInput = document.getElementById('supplier_name');
+        const creditCodeInput = document.getElementById('credit_code');
+        const submitButton = document.getElementById('submit_button');
+        const supplierNameError = document.getElementById('supplier_name_error');
+        const creditCodeError = document.getElementById('credit_code_error');
+
+        const existingBids = {{ existing_bids | tojson }};
+
+
+        const currentBidId = {{ bid.id }};
+
+
+        function validateInputs() {
+
+            if (!Array.isArray(existingBids)) return;
+
+            let hasError = false;
+
+            supplierNameError.style.display = 'none';
+            creditCodeError.style.display = 'none';
+
+            const supplierName = supplierNameInput.value.trim();
+            const creditCode = creditCodeInput.value.trim();
+
+            existingBids.forEach(function (bid) {
+                if (bid.id !== currentBidId) {  // 用提前定义好的变量
+                    if (bid.supplier_name === supplierName) {
+                        supplierNameError.style.display = 'block';
+                        hasError = true;
+                    }
+                    if (bid.credit_code === creditCode) {
+                        creditCodeError.style.display = 'block';
+                        hasError = true;
+                    }
+                }
+            });
+
+
+            if (submitButton) {
+                submitButton.disabled = hasError;
+            }
+        }
+
+        supplierNameInput.addEventListener('input', validateInputs);
+        creditCodeInput.addEventListener('input', validateInputs);
+    });
+</script>
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const creditCodeInput = document.getElementById('credit_code');
+        const illegalLetterError = document.getElementById('credit_code_illegal_letter_error');
+        const specialCharError = document.getElementById('credit_code_special_char_error');
+        const lengthError = document.getElementById('credit_code_length_error');
+        const submitButton = document.getElementById('submit_button'); // 提交按钮要加 id
+
+        function cleanInput(value) {
+            let upper = value.toUpperCase();
+            let cleaned = '';
+            let hasIllegalLetter = false;
+            let hasSpecialChar = false;
+
+            for (let i = 0; i < upper.length; i++) {
+                const ch = upper[i];
+                if ('IOZSV'.includes(ch)) {
+                    hasIllegalLetter = true;
+                    continue; // 拦截掉非法字母
+                }
+                if (!/[0-9A-Z]/.test(ch)) {
+                    hasSpecialChar = true;
+                    continue; // 拦截特殊字符
+                }
+                cleaned += ch;
+            }
+
+            return {
+                cleaned,
+                hasIllegalLetter,
+                hasSpecialChar
+            };
+        }
+
+        function validateCreditCode(value, flags) {
+            const isLengthValid = value.length === 18;
+
+            // 隐藏所有提示
+            illegalLetterError.style.display = 'none';
+            specialCharError.style.display = 'none';
+            lengthError.style.display = 'none';
+
+            let hasError = false;
+
+            // 显示非法字母错误
+            if (flags.hasIllegalLetter) {
+                illegalLetterError.style.display = 'block';
+                hasError = true;
+            }
+
+            // 显示特殊字符错误
+            if (flags.hasSpecialChar) {
+                specialCharError.style.display = 'block';
+                hasError = true;
+            }
+
+            // 显示长度不够错误
+            if (value.length > 0 && !isLengthValid) {
+                lengthError.style.display = 'block';
+                hasError = true;
+            }
+
+            if (submitButton) {
+                submitButton.disabled = hasError;
+            }
+        }
+
+        if (creditCodeInput) {
+            creditCodeInput.addEventListener('input', function () {
+                const result = cleanInput(this.value);
+                this.value = result.cleaned.slice(0, 18); // 限制最大长度
+                validateCreditCode(this.value, result);
+            });
+
+            creditCodeInput.addEventListener('paste', function (event) {
+                event.preventDefault(); // 阻止默认粘贴
+                const pasteData = (event.clipboardData || window.clipboardData).getData('text');
+                const result = cleanInput(pasteData);
+                this.value = result.cleaned.slice(0, 18);
+                validateCreditCode(this.value, result);
+            });
+        }
+    });
+</script>
+
+
+
+</body>
+</html>

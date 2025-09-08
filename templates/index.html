@@ -1,0 +1,997 @@
+<!DOCTYPE html>
+
+<html lang="zh-CN">
+<head>
+    <meta charset="utf-8"/>
+    <link href="{{ url_for('static', filename='bid.png') }}" rel="icon" type="image/png"/>
+    <title>投标客户登记 - 云南国合</title>
+    <meta content="width=device-width, initial-scale=1" name="viewport"/>
+    <!-- Bootstrap 5 CDN -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet"/>
+    <style>
+        html, body {
+            font-family: "Microsoft YaHei", sans-serif;
+            background-size: cover;
+            min-width: 1200px; /* 锁定最小宽度避免按钮遮住卡片 */
+            overflow-x: auto;
+        }
+
+        .overlay {
+            background-color: rgba(255, 255, 255, 0.97);
+            padding: 40px 50px;
+            border-radius: 12px;
+            width: 100%;
+            max-width: 900px;
+            min-height: 600px;
+            box-shadow: 0 0 16px rgba(0, 0, 0, 0.2);
+            margin: 100px auto 40px auto;
+            box-sizing: border-box;
+            position: relative;
+            z-index: 10; /* 始终高于按钮 */
+        }
+
+        /* 管理员登录按钮 */
+        .admin-login-btn {
+            position: fixed;
+            top: 10px;
+            right: 10px;
+            z-index: 1000;
+        }
+
+        /* 自动补全建议框 */
+        .autocomplete-suggestions {
+            border: 1px solid #ccc;
+            max-height: 200px;
+            overflow-y: auto;
+            background-color: #fff;
+            position: absolute;
+            width: 100%;
+            z-index: 1000;
+        }
+
+        .autocomplete-suggestion {
+            padding: 8px;
+            cursor: pointer;
+        }
+
+        .autocomplete-suggestion:hover {
+            background-color: #f0f0f0;
+        }
+
+        /* 闪烁动画 */
+        @keyframes flash {
+            0%, 50%, 100% {
+                opacity: 1;
+            }
+            25%, 75% {
+                opacity: 0.3;
+            }
+        }
+
+        .flash-animate {
+            animation: flash 1s ease-in-out;
+        }
+
+        /* ✅ 左右下角圆按钮样式 */
+        .faq-btn, .bot-btn {
+            width: 90px;
+            height: 90px;
+            position: fixed;
+            bottom: 30px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+            border: none;
+            color: white;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+            z-index: 999;
+        }
+
+        .faq-btn {
+            left: 40px;
+            background-color: #007bff;
+            color: white;
+        }
+
+        .bot-btn {
+            right: 40px;
+            background-color: #28a745;
+            color: white;
+            font-size: 30px;
+        }
+
+        .faq-btn span, .bot-btn span {
+            font-size: 12px;
+            margin-top: 4px;
+            color: white;
+        }
+
+        .faq-icon, .bot-icon {
+            width: 24px;
+            height: 24px;
+            fill: white;
+        }
+
+        /* FAQ 弹出气泡 */
+        .faq-bubble {
+            position: fixed;
+            bottom: 160px;
+            left: 30px;
+            background: #fff;
+            border-radius: 10px;
+            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
+            padding: 15px;
+            width: 280px;
+            display: none;
+            z-index: 1000;
+        }
+
+        .faq-item {
+            margin-bottom: 10px;
+        }
+
+        .faq-question {
+            font-weight: bold;
+            display: flex;
+            justify-content: space-between;
+            cursor: pointer;
+        }
+
+        .faq-answer {
+            display: none;
+            font-size: 0.9em;
+            color: #555;
+            margin-top: 5px;
+        }
+
+        /* 聊天窗口 */
+        .chat-window {
+            position: fixed;
+            bottom: 180px;
+            right: 30px;
+            width: 350px;
+            max-height: 500px;
+            background-color: #fff;
+            border-radius: 12px;
+            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.3);
+            display: none;
+            flex-direction: column;
+            overflow: hidden;
+            z-index: 1000;
+        }
+
+        .chat-header {
+            background-color: #28a745;
+            color: white;
+            padding: 12px;
+            font-weight: bold;
+        }
+
+        .chat-body {
+            flex: 1;
+            padding: 10px;
+            overflow-y: auto;
+        }
+
+        .chat-message {
+            margin-bottom: 10px;
+        }
+
+        .chat-message.user {
+            text-align: right;
+        }
+
+        .chat-message.bot {
+            text-align: left;
+        }
+
+        .chat-footer {
+            border-top: 1px solid #ddd;
+            padding: 10px;
+        }
+
+        .chat-footer input {
+            width: 100%;
+            padding: 6px 10px;
+            border-radius: 6px;
+            border: 1px solid #ccc;
+        }
+
+        /* 聊天消息样式 */
+        .msg-row {
+            display: flex;
+            align-items: flex-end;
+            margin-bottom: 10px;
+        }
+
+        .msg-row.user {
+            justify-content: flex-end;
+        }
+
+        .msg-row.bot {
+            justify-content: flex-start;
+        }
+
+        .avatar {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background-color: #ccc;
+            margin: 0 8px;
+            text-align: center;
+            line-height: 32px;
+            font-size: 14px;
+            font-weight: bold;
+        }
+
+        .bubble {
+            padding: 8px 12px;
+            border-radius: 16px;
+            max-width: 70%;
+            word-wrap: break-word;
+        }
+
+        .user .bubble {
+            background-color: #d1f0d1;
+            color: #000;
+            border-bottom-right-radius: 2px;
+        }
+
+        .bot .bubble {
+            background-color: #eee;
+            color: #000;
+            border-bottom-left-radius: 2px;
+        }
+
+        .chat-reset {
+            background: transparent;
+            color: white;
+            border: none;
+            font-size: 14px;
+            cursor: pointer;
+        }
+
+        /* ✅ 响应式：小屏幕下两个按钮聚合到底部中间 */
+        @media (max-width: 768px) {
+            .faq-btn {
+                left: 50%;
+                transform: translateX(-110%);
+                bottom: 20px;
+            }
+
+            .bot-btn {
+                right: 50%;
+                transform: translateX(110%);
+                bottom: 20px;
+            }
+        }
+    </style>
+    <style>
+        .alert-info {
+            background-color: #d1ecf1;
+            border-color: #bee5eb;
+            color: #0c5460;
+        }
+    </style>
+</head>
+<body>
+<!-- 管理员登录按钮 -->
+<div class="admin-login-btn">
+    <a class="btn btn-outline-primary" href="{{ url_for('login') }}">管理员登录</a>
+</div>
+<div class="overlay">
+    <h2 class="mb-4">📋 投标信息登记表</h2>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+    <div id="flash-container">
+        {% for category, message in messages %}
+        <div class="alert alert-{{ category }} flash-animate">{{ message }}</div>
+        {% endfor %}
+    </div>
+    {% endif %}
+    {% endwith %}
+
+
+    <div class="alert alert-info">仅现场报名有效; 填报时请仔细检查信息，否则后果自负</div>
+
+    {% if not business_open %}
+    <div class="alert alert-danger">⚠️ 当前为非投标时间（仅工作日 9:00 ~ 17:00），请勿在非工作日投标，否则不予处理</div>
+    {% endif %}
+        <form id="registrationForm" action="/" class="row g-3" method="POST" onsubmit="console.log('🟢 表单准备提交');">
+
+        <input id="project_id" name="project_id" type="hidden"/>
+
+        <div class="col-md-6 position-relative">
+            <label class="form-label" for="project_code">
+                项目名称或编号（支持模糊搜索）未找到说明项目未开始或已逾期
+            </label>
+            <input type="text" class="form-control" id="project_code" name="project_code"
+                   placeholder="至少输入2字符，名称编号均可"
+                   value="{{ prefill.project_code if prefill else '' }}"
+                   autocomplete="off"
+                   required
+                   {% if not business_open %}disabled{% endif %}>
+            <div class="autocomplete-suggestions" id="autocomplete-suggestions"></div>
+        </div>
+
+        <div class="col-md-6" id="segment-wrapper" style="display: none;">
+            <label class="form-label" for="sub_project_id">请选择标段</label>
+            <select class="form-select" id="sub_project_id" name="sub_project_id">
+                <option value="" selected>-- 请选择标段 --</option>
+            </select>
+        </div>
+
+        <div class="col-md-6">
+            <label class="form-label" for="supplier_name">投标单位名称</label>
+            <input type="text" class="form-control" name="supplier_name"
+                   value="{{ prefill.supplier_name if prefill else '' }}" required
+                   {% if not business_open %}disabled{% endif %}>
+        </div>
+
+        <div class="col-md-6">
+            <label class="form-label" for="supplier_address">投标单位地址</label>
+            <input type="text" class="form-control" name="supplier_address"
+                   value="{{ prefill.supplier_address if prefill else '' }}" required
+                   {% if not business_open %}disabled{% endif %}>
+        </div>
+
+        <div class="col-md-6">
+            <label class="form-label" for="legal_person">法定代表人</label>
+            <input type="text" class="form-control" name="legal_person"
+                   value="{{ prefill.legal_person if prefill else '' }}" required
+                   {% if not business_open %}disabled{% endif %}>
+        </div>
+
+        <div class="col-md-6">
+            <label class="form-label" for="credit_code">统一社会信用代码</label>
+            <input type="text" class="form-control" id="credit_code" name="credit_code" maxlength="18"
+                   placeholder="系统可自动转大写字母"
+                   value="{{ prefill.credit_code if prefill else '' }}" required
+                   {% if not business_open %}disabled{% endif %}>
+            <!-- 错误提示 -->
+            <div class="error-message" id="credit_code_illegal_letter_error"
+                 style="color: red; font-size: 14px; margin-top: 5px; display: none;">
+                ❌ 统一社会信用代码中不能包含 I、O、Z、S、V！
+            </div>
+            <div class="error-message" id="credit_code_special_char_error"
+                 style="color: red; font-size: 14px; margin-top: 5px; display: none;">
+                ❌ 统一社会信用代码只能输入数字和大写英文字母，不能包含特殊字符！
+            </div>
+            <div class="error-message" id="credit_code_length_error"
+                 style="color: blueviolet; font-size: 14px; margin-top: 5px; display: none;">
+                统一社会信用代码必须是18位！
+            </div>
+        </div>
+
+        <div class="col-md-6">
+            <label class="form-label" for="agent">委托代理人</label>
+            <input type="text" class="form-control" name="agent"
+                   value="{{ prefill.agent if prefill else '' }}"
+                   {% if not business_open %}disabled{% endif %}>
+        </div>
+
+        <div class="col-md-6">
+            <label class="form-label" for="phone">手机号码</label>
+            <input type="text" class="form-control" name="phone" required
+                   placeholder="请输入11位有效手机号码"
+                   value="{{ prefill.phone if prefill else '' }}"
+                   {% if not business_open %}disabled{% endif %}>
+            <div class="error hidden" id="phone-error"></div>
+        </div>
+
+        <div class="col-md-6">
+            <label class="form-label" for="email">电子邮箱</label>
+            <input type="email" class="form-control" id="email" name="email" required
+                   placeholder="请输入有效的邮箱（以 .com 结尾）"
+                   value="{{ prefill.email if prefill else '' }}"
+                   {% if not business_open %}disabled{% endif %}>
+            <div class="error hidden" id="email-error"></div>
+        </div>
+
+        <div class="col-md-6">
+            <label class="form-label">获取文件方式</label>
+            <input type="text" class="form-control" name="file_method" value="现场获取" readonly>
+        </div>
+
+        <div class="col-md-6">
+            <label class="form-label">当前时间（自动记录）</label>
+            <input type="text" class="form-control" name="file_time" value="{{ now_string() }}" readonly>
+        </div>
+
+        <div class="col-12">
+            <button id="submit_button" type="submit" class="btn btn-primary" {% if not business_open %}disabled{% endif %}>
+                提交登记信息
+            </button>
+
+        </div>
+    </form>
+
+</div>
+<!-- FAQ图标按钮 -->
+<!--<button class="faq-btn" onclick="toggleFAQ()">-->
+<!--    <svg class="faq-icon" viewBox="0 0 24 24">-->
+<!--        <path d="M12 2C6.5 2 2 6 2 12s4.5 10 10 10 10-4 10-10S17.5 2 12 2zm0 17.3c-.8 0-1.5-.7-1.5-1.5S11.2 16.3 12 16.3s1.5.7 1.5 1.5-.7 1.5-1.5 1.5zm2-6.6l-.9.9c-.6.6-.9 1.1-.9 2h-2c0-1.3.5-2.1 1.3-2.8l1.2-1.2c.5-.5.8-1.1.8-1.8 0-1.3-1.1-2.3-2.4-2.3s-2.3 1-2.3 2.3H7c0-2.5 2-4.5 4.5-4.5S16 7.5 16 10c0 1-.4 2-1 2.7z"/>-->
+<!--    </svg>-->
+<!--</button>-->
+<button class="faq-btn" onclick="toggleFAQ()">
+    <div style="display: flex; flex-direction: column; align-items: center;">
+        <svg class="faq-icon" viewbox="0 0 24 24">
+            <path d="M12 2C6.5 2 2 6 2 12s4.5 10 10 10 10-4 10-10S17.5 2 12 2zm0 17.3c-.8 0-1.5-.7-1.5-1.5S11.2 16.3 12 16.3s1.5.7 1.5 1.5-.7 1.5-1.5 1.5zm2-6.6l-.9.9c-.6.6-.9 1.1-.9 2h-2c0-1.3.5-2.1 1.3-2.8l1.2-1.2c.5-.5.8-1.1.8-1.8 0-1.3-1.1-2.3-2.4-2.3s-2.3 1-2.3 2.3H7c0-2.5 2-4.5 4.5-4.5S16 7.5 16 10c0 1-.4 2-1 2.7z"></path>
+        </svg>
+        <span style="font-size: 20px; color: white; margin-top: 2px;">常见问题</span>
+    </div>
+</button>
+<!-- DeepSeek机器人按钮 -->
+<!--<button class="bot-btn" onclick="toggleChat()">-->
+<!--    <svg class="bot-icon" viewBox="0 0 24 24">-->
+<!--        <path d="M12 2a2 2 0 012 2v1h5a1 1 0 011 1v11a2 2 0 01-2 2h-3.1c-.5 1.2-1.6 2-2.9 2s-2.4-.8-2.9-2H6a2 2 0 01-2-2V6a1 1 0 011-1h5V4a2 2 0 012-2zm0 16a1 1 0 100-2 1 1 0 000 2zm-4-6a1 1 0 100-2 1 1 0 000 2zm8 0a1 1 0 100-2 1 1 0 000 2z"/>-->
+<!--    </svg>-->
+<!--</button>-->
+<button class="bot-btn" onclick="toggleChat()">
+    <div style="display: flex; flex-direction: column; align-items: center;">
+        <svg class="bot-icon" viewbox="0 0 24 24">
+            <path d="M12 2a2 2 0 012 2v1h5a1 1 0 011 1v11a2 2 0 01-2 2h-3.1c-.5 1.2-1.6 2-2.9 2s-2.4-.8-2.9-2H6a2 2 0 01-2-2V6a1 1 0 011-1h5V4a2 2 0 012-2zm0 16a1 1 0 100-2 1 1 0 000 2zm-4-6a1 1 0 100-2 1 1 0 000 2zm8 0a1 1 0 100-2 1 1 0 000 2z"></path>
+        </svg>
+        <span style="font-size: 20px; color: white; margin-top: 2px;">AI助手</span>
+    </div>
+</button>
+<!-- 气泡内容 -->
+<div class="faq-bubble" id="faqBubble">
+    <h6>❓ 常见问题</h6>
+    <div class="faq-item">
+        <div class="faq-question" onclick="toggleAnswer(this)">📌 怎么接收标书？<span>+</span></div>
+        <div class="faq-answer">报名并付费成功后系统将自动发送标书至您的预留邮箱。</div>
+    </div>
+    <div class="faq-item">
+        <div class="faq-question" onclick="toggleAnswer(this)">📌 标书费用怎么支付？ 能开发票吗？<span>+</span></div>
+        <div class="faq-answer">微信，现金，支付宝，对公转账都能支付，如需开票只能公对公。</div>
+    </div>
+    <div class="faq-item">
+        <div class="faq-question" onclick="toggleAnswer(this)">📌 报名截止时间？<span>+</span></div>
+        <div class="faq-answer">以招标公告为准，系统自动同步。</div>
+    </div>
+    <div class="faq-item">
+        <div class="faq-question" onclick="toggleAnswer(this)">📌 购买标书需要提供哪些资料？<span>+</span></div>
+        <div class="faq-answer">法人身份证明书和授权委托书。</div>
+    </div>
+    <div class="faq-item">
+        <div class="faq-question" onclick="toggleAnswer(this)">📌 报名费是多少？<span>+</span></div>
+        <div class="faq-answer">费用请看招标公告。</div>
+    </div>
+    <div class="faq-item">
+        <div class="faq-question" onclick="toggleAnswer(this)">📌 标书是纸质版吗？<span>+</span></div>
+        <div class="faq-answer">标书是电子版,您需要自己填写并打印。</div>
+    </div>
+</div>
+<!-- 聊天窗口 -->
+<div class="chat-window" id="chatWindow">
+    <div class="chat-header">
+        <span>AI 投标助手</span>
+        <button class="chat-reset" onclick="resetChat()">🗑 清空</button>
+    </div>
+    <div class="chat-body" id="chatBody">
+        <div class="chat-message bot">亲爱的客户您好，我是云南国合建设招标咨询公司的AI机器人助手，请问您有什么疑问呢？
+        </div>
+    </div>
+    <!--    <div class="chat-footer" style="display: flex; gap: 5px;">-->
+    <!--        &lt;!&ndash;        <input type="text" id="chatInput" placeholder="请输入您的问题并回车" onkeypress="handleKey(event)"&ndash;&gt;-->
+    <!--        &lt;!&ndash;               style="flex: 1;">&ndash;&gt;-->
+    <!--        <textarea id="chatInput" placeholder="请输入您的问题并回车" onkeypress="handleKey(event)" rows="1"-->
+    <!--                  style="resize: none; overflow: hidden; min-height: 36px;"></textarea>-->
+    <!--        <button id="sendBtn" onclick="clickSend()" class="btn btn-primary">发送</button>-->
+    <!--    </div>-->
+    <div class="chat-footer" style="display: flex; gap: 5px;">
+        <textarea id="chatInput" onkeypress="handleKey(event)" placeholder="请输入您的问题并回车" rows="1"
+                  style="flex: 1; resize: none; overflow: hidden; min-height: 36px;"></textarea>
+        <button class="btn btn-primary" id="sendBtn" onclick="clickSend()" style="width: 80px;">发送</button>
+    </div>
+</div>
+<!-- Bootstrap JS CDN -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script>
+    $(document).ready(function () {
+        // ✅ 输入框自动补全项目编号
+        $('#project_code').on('input', function () {
+            var query = $(this).val().trim();
+            if (query.length >= 2) {
+                $.ajax({
+                    url: '/search_projects',
+                    method: 'GET',
+                    data: {query: query},
+                    success: function (data) {
+                        var suggestions = $('#autocomplete-suggestions');
+                        suggestions.empty();
+
+                        if (data.projects && data.projects.length > 0) {
+                            data.projects.forEach(function (project) {
+                                var suggestionItem = $('<div class="autocomplete-suggestion"></div>');
+                                suggestionItem.attr('data-code', project.code);
+                                suggestionItem.attr('data-segmented', project.has_segments ? 'true' : 'false');
+
+                                var label = project.code + ' - ' + project.name + (project.has_segments ? '（含标段）' : '');
+                                suggestionItem.text(label);
+
+                                suggestionItem.on('click', function () {
+                                    $('#project_code').val(project.code);
+                                    $('#project_id').val(project.id);
+                                    suggestions.empty();
+
+                                    $.ajax({
+                                        url: '/get_segments/' + project.id,
+                                        method: 'GET',
+                                        success: function (data) {
+                                            const segmentWrapper = $('#segment-wrapper');
+                                            const segmentSelect = $('#sub_project_id');
+                                            segmentSelect.empty().append('<option value="">-- 请选择标段 --</option>');
+
+                                            if (data.subprojects && data.subprojects.length > 0) {
+                                                data.subprojects.forEach(function (sp) {
+                                                    segmentSelect.append(`<option value="${sp.id}">${sp.segment_name}</option>`);
+                                                });
+                                                segmentWrapper.show();
+                                            } else {
+                                                segmentWrapper.hide();
+                                                // ✅ 用户体验增强提示
+                                                alert('✅ 当前项目没有标段，可直接填写投标信息。');
+                                            }
+                                        },
+                                        error: function () {
+                                            alert('❌ 获取标段信息失败，请稍后再试或联系管理员。');
+                                        }
+                                    });
+                                });
+
+                                suggestions.append(suggestionItem);
+                            });
+                        } else {
+                            suggestions.append('<div class="autocomplete-suggestion">没有找到匹配的项目</div>');
+                        }
+                    }
+                });
+            } else {
+                $('#autocomplete-suggestions').empty();
+            }
+        });
+
+        // ✅ 提交前校验是否选择了标段（若该项目有标段）
+        $('form').on('submit', function () {
+            const segmentWrapper = $('#segment-wrapper');
+            const segmentSelect = $('#sub_project_id');
+
+            if (segmentWrapper.is(':visible') &&
+                segmentSelect.children('option').length > 1 &&
+                segmentSelect.val() === '') {
+                alert('⚠️ 该项目存在标段，请先选择具体标段！');
+                return false;
+            }
+        });
+    });
+</script>
+
+<script>
+    // 客户端表单验证
+    $(document).ready(function () {
+        $('#registrationForm').on('submit', function (event) {
+            let isValid = true;
+
+            // 验证手机号码（11位数字）
+            let phone = $('#phone').val();
+            let phonePattern = /^[0-9]{11}$/;
+            if (!phonePattern.test(phone)) {
+                isValid = false;
+                $('#phone-error').removeClass('hidden');
+            } else {
+                $('#phone-error').addClass('hidden');
+            }
+
+            // 验证电子邮箱（必须有@，以.com结尾）
+            let email = $('#email').val();
+            let emailPattern = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,4}$/;
+            if (!emailPattern.test(email) || !email.endsWith(".com")) {
+                isValid = false;
+                $('#email-error').removeClass('hidden');
+            } else {
+                $('#email-error').addClass('hidden');
+            }
+
+            // 如果验证失败，阻止表单提交
+            if (!isValid) {
+                event.preventDefault();
+            }
+        });
+    });
+</script>
+<script>
+    // 自动淡出 flash 提示框
+    setTimeout(function () {
+        const container = document.getElementById("flash-container");
+        if (container) {
+            container.style.transition = "opacity 2s ease";
+            container.style.opacity = 0;
+
+            // 再延迟销毁 DOM 节点
+            setTimeout(() => container.remove(), 2000);
+        }
+    }, 10000); // 10秒后开始淡出
+</script>
+<script>
+    function toggleFAQ() {
+        const box = document.getElementById('faqBubble');
+        box.style.display = box.style.display === 'block' ? 'none' : 'block';
+    }
+
+    function toggleAnswer(el) {
+        const answer = el.nextElementSibling;
+        const icon = el.querySelector('span');
+        const shown = answer.style.display === 'block';
+        answer.style.display = shown ? 'none' : 'block' ;
+        icon.textContent = shown ? '+' : '–';
+    }
+
+    window.onload = function () {
+        appendMessage("bot", "亲爱的客户您好，我是云南国合建设招标咨询公司的AI机器人助手，请问您有什么疑问呢？");
+    };
+
+    function toggleChat() {
+        const win = document.getElementById("chatWindow");
+        const voiceBtns = document.getElementById("voice-control-buttons");  // ✅ 正确声明！
+
+        if (win.style.display === "flex") {
+            win.style.display = "none";
+            voiceBtns.style.display = "none";
+            fetch('/reset_chat', {method: 'POST'});
+        } else {
+            win.style.display = "flex";
+            voiceBtns.style.display = "block";
+        }
+    }
+
+
+    function handleKey(event) {
+        if (event.key === "Enter") {
+            const input = document.getElementById("chatInput");
+            const message = input.value.trim();
+            if (message) {
+                appendMessage("user", message);
+                input.value = "";
+
+                // 添加“正在思考中...”的提示，并保存节点
+                const placeholder = appendMessage("bot", "🤖 正在思考中...", true);
+
+                fetch('/ask_deepseek', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({question: message})
+                })
+                    .then(res => res.json())
+                    .then(data => {
+                        if (data.answer) {
+                            placeholder.querySelector(".bubble").textContent = data.answer;
+                        } else {
+                            placeholder.querySelector(".bubble").textContent = "❌ 抱歉，我暂时无法回答这个问题。";
+                        }
+                    })
+                    .catch(() => {
+                        placeholder.querySelector(".bubble").textContent = "⚠️ 请求失败，请检查网络或稍后再试。";
+                    });
+
+                // ✅ 不管发送成功还是失败，先清空输入框并归位高度
+                input.value = "";
+                input.style.height = "36px";
+                accumulatedTranscript = ""; // 🧹 发送成功后，清空累计语音文本
+
+            }
+        }
+    }
+
+    function clickSend() {
+        if (isSpeaking) {
+            stopRecognition(); // ✅ 如果正在说话，点击发送按钮时自动停止语音识别
+        }
+        const eventEnter = new KeyboardEvent('keypress', {key: 'Enter'});
+        handleKey(eventEnter);
+    }
+
+
+    function appendMessage(role, text, returnNode = false) {
+        const container = document.getElementById("chatBody");
+        const row = document.createElement("div");
+        row.className = "msg-row " + role;
+
+        const avatar = document.createElement("div");
+        avatar.className = "avatar";
+        avatar.textContent = role === "user" ? "您" : "🤖";
+
+        const bubble = document.createElement("div");
+        bubble.className = "bubble";
+        bubble.textContent = text;
+
+        row.appendChild(role === "user" ? bubble : avatar);
+        row.appendChild(role === "user" ? avatar : bubble);
+        container.appendChild(row);
+        container.scrollTop = container.scrollHeight;
+        return returnNode ? row : null;
+    }
+
+    function resetChat() {
+        fetch('/reset_chat', {method: 'POST'});
+        const chatBody = document.getElementById("chatBody");
+        chatBody.innerHTML = '';
+        appendMessage("bot", "亲爱的客户您好，我是云南国合建设招标咨询公司的AI机器人助手，请问您有什么疑问呢？");
+    }
+</script>
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const creditCodeInput = document.getElementById('credit_code');
+        const illegalLetterError = document.getElementById('credit_code_illegal_letter_error');
+        const specialCharError = document.getElementById('credit_code_special_char_error');
+        const lengthError = document.getElementById('credit_code_length_error');
+        const submitButton = document.getElementById('submit_button'); // 提交按钮要加 id
+
+        function cleanInput(value) {
+            let upper = value.toUpperCase();
+            let cleaned = '';
+            let hasIllegalLetter = false;
+            let hasSpecialChar = false;
+
+            for (let i = 0; i < upper.length; i++) {
+                const ch = upper[i];
+                if ('IOZSV'.includes(ch)) {
+                    hasIllegalLetter = true;
+                    continue; // 拦截掉非法字母
+                }
+                if (!/[0-9A-Z]/.test(ch)) {
+                    hasSpecialChar = true;
+                    continue; // 拦截特殊字符
+                }
+                cleaned += ch;
+            }
+
+            return {
+                cleaned,
+                hasIllegalLetter,
+                hasSpecialChar
+            };
+        }
+
+        function validateCreditCode(value, flags) {
+            const isLengthValid = value.length === 18;
+
+            // 隐藏所有提示
+            illegalLetterError.style.display = 'none';
+            specialCharError.style.display = 'none';
+            lengthError.style.display = 'none';
+
+            let hasError = false;
+
+            // 显示非法字母错误
+            if (flags.hasIllegalLetter) {
+                illegalLetterError.style.display = 'block';
+                hasError = true;
+            }
+
+            // 显示特殊字符错误
+            if (flags.hasSpecialChar) {
+                specialCharError.style.display = 'block';
+                hasError = true;
+            }
+
+            // 显示长度不够错误
+            if (value.length > 0 && !isLengthValid) {
+                lengthError.style.display = 'block';
+                hasError = true;
+            }
+
+            if (submitButton) {
+                submitButton.disabled = hasError;
+            }
+        }
+
+        if (creditCodeInput) {
+            creditCodeInput.addEventListener('input', function () {
+                const result = cleanInput(this.value);
+                this.value = result.cleaned.slice(0, 18); // 限制最大长度
+                validateCreditCode(this.value, result);
+            });
+
+            creditCodeInput.addEventListener('paste', function (event) {
+                event.preventDefault(); // 阻止默认粘贴
+                const pasteData = (event.clipboardData || window.clipboardData).getData('text');
+                const result = cleanInput(pasteData);
+                this.value = result.cleaned.slice(0, 18);
+                validateCreditCode(this.value, result);
+            });
+        }
+    });
+</script>
+<!-- ✅ 实时语音识别结果显示框 -->
+<div id="transcript-box" style="position: fixed; bottom: 190px; right: 30px; background: rgba(255,255,255,0.85);
+            padding: 8px 12px; border-radius: 8px; font-size: 14px; max-width: 300px; color: #333;
+            z-index: 1001; display: none;">
+</div>
+<!-- ✅ 只有一个语音切换按钮 -->
+<div id="voice-control-buttons" style="display: none; position: fixed; bottom: 130px; right: 30px; z-index: 1002;">
+    <button class="btn btn-success" id="voice-toggle-btn" onclick="toggleVoiceChat()">🎙️ 开始说话</button>
+</div>
+<script>
+    let recognition = null;
+    let isSpeaking = false;
+    let accumulatedTranscript = ""; // 📝 累加整个说话过程的内容
+    function toggleVoiceChat() {
+        if (!('webkitSpeechRecognition' in window || 'SpeechRecognition' in window)) {
+            alert("❌ 当前浏览器不支持语音识别，请用 Chrome/Edge");
+            return;
+        }
+
+        if (!isSpeaking) {
+            recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
+            // ✅ 立刻同步输入框已有内容到accumulatedTranscript
+            const inputBox = document.getElementById("chatInput");
+            accumulatedTranscript = inputBox.value || "";
+            recognition.lang = 'zh-CN';
+            recognition.interimResults = true;
+
+            recognition.onresult = function (event) {
+                let finalTranscript = "";
+                let interimTranscript = "";
+
+                for (let i = event.resultIndex; i < event.results.length; i++) {
+                    if (event.results[i].isFinal) {
+                        finalTranscript += event.results[i][0].transcript;
+                    } else {
+                        interimTranscript += event.results[i][0].transcript;
+                    }
+                }
+
+                accumulatedTranscript += finalTranscript;  // 只在 isFinal 累加
+
+                const inputBox = document.getElementById("chatInput");
+                inputBox.value = accumulatedTranscript + interimTranscript; // 已完成 + 临时识别
+                // inputBox.style.height = 'auto';
+                // inputBox.style.height = inputBox.scrollHeight + 'px';
+                inputBox.dispatchEvent(new Event('input')); // ✅ 派发 input事件，触发自适应
+            };
+
+
+            recognition.onerror = function (event) {
+                console.error("语音识别错误:", event.error);
+                stopRecognition();
+            };
+
+            recognition.onend = function () {
+                console.log("🎙️ 本轮识别结束");
+                if (isSpeaking) {
+                    console.log("✅ 自动重启监听中...");
+                    recognition.start();  // 续听
+                } else {
+                    console.log("🛑 用户已手动停止，不再续听");
+                    // ✅ 只有用户手动点击结束时，才调用真正的stopRecognition逻辑！
+                    finalizeInput();
+                }
+            };
+
+            recognition.start();
+            isSpeaking = true;
+            updateVoiceButton(true);
+            console.log("✅ 开始语音识别！");
+        } else {
+            stopRecognition();
+        }
+    }
+
+    function finalizeInput() {
+        const inputBox = document.getElementById("chatInput");
+        if (accumulatedTranscript.trim() !== "") {
+            inputBox.value = accumulatedTranscript;
+
+            // 不自动发送！只填到输入框！
+            // accumulatedTranscript = ""; // 清空，为下一次识别做准备
+
+            // 调整输入框高度
+            inputBox.style.height = 'auto';
+            inputBox.style.height = inputBox.scrollHeight + 'px';
+        }
+    }
+
+    function stopRecognition() {
+        if (recognition) {
+            recognition.stop();
+            recognition = null;
+        }
+        isSpeaking = false;
+        updateVoiceButton(false);
+        console.log("🛑 语音识别已停止！");
+
+        // // ✅ 统一提交累计的内容
+        // if (accumulatedTranscript.trim() !== "") {
+        //     const inputBox = document.getElementById("chatInput");
+        //     inputBox.value = accumulatedTranscript;
+        //
+        //     const eventEnter = new KeyboardEvent('keypress', {key: 'Enter'});
+        //     handleKey(eventEnter);
+        //
+        //     accumulatedTranscript = ""; // 🧹 清空，为下一次识别做准备
+        // }
+    }
+
+    function updateVoiceButton(speaking) {
+        const btn = document.getElementById("voice-toggle-btn");
+        if (speaking) {
+            btn.textContent = "🛑 结束说话";
+            btn.className = "btn btn-danger";
+        } else {
+            btn.textContent = "🎙️ 开始说话";
+            btn.className = "btn btn-success";
+        }
+    }
+</script>
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const chatInput = document.getElementById('chatInput');
+        chatInput.addEventListener('input', function () {
+            this.style.height = 'auto'; // 先复位高度
+            this.style.height = (this.scrollHeight) + "px"; // 再根据内容调整
+        });
+    });
+
+</script>
+
+<script>
+document.getElementById("autocomplete-suggestions").addEventListener("click", function (e) {
+    const item = e.target.closest(".autocomplete-suggestion");
+    if (!item) return;
+
+    const code = item.getAttribute("data-code");
+    const isSegmented = item.getAttribute("data-segmented") === "true";
+
+    document.getElementById("project_code").value = code;
+
+    const segmentWrapper = document.getElementById("segment-wrapper");
+    const segmentSelect = document.getElementById("sub_project_id");
+
+    if (isSegmented) {
+        segmentWrapper.style.display = "block";
+        segmentSelect.disabled = false;
+        segmentSelect.setAttribute("required", "required");
+    } else {
+        segmentWrapper.style.display = "none";
+        segmentSelect.disabled = true;
+        segmentSelect.removeAttribute("required");
+            // ✅ 强制设置默认选中项
+        segmentSelect.selectedIndex = 0;
+    }
+});
+</script>
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    const btn = document.querySelector('button[type="submit"]');
+    if (btn) {
+        btn.addEventListener("click", () => {
+            console.log("✅ 按钮点击事件触发了");
+        });
+    } else {
+        console.error("❌ 找不到提交按钮！");
+    }
+
+    const form = document.querySelector("#registrationForm");
+    if (form) {
+        form.addEventListener("submit", (e) => {
+            console.log("🟢 表单准备提交");
+        });
+    } else {
+        console.error("❌ 找不到表单！");
+    }
+});
+</script>
+</body>
+
+
+</body>
+</html>
+
+
+

@@ -1,0 +1,489 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <link rel="icon" href="{{ url_for('static', filename='bid.png') }}" type="image/png">
+    <title>编辑项目 - 云南国合</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <!-- Bootstrap 5 CDN -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body {
+            background: url("/static/img/bg_admin.jpg") no-repeat center center fixed;
+            background-size: cover;
+            font-family: "Microsoft YaHei", sans-serif;
+        }
+
+        .container-box {
+            background-color: rgba(255, 255, 255, 0.95);
+            padding: 30px;
+            margin: 5vh auto;
+            border-radius: 14px;
+            max-width: 900px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.15);
+        }
+
+        @keyframes flash-once {
+            0% {
+                opacity: 0;
+            }
+            50% {
+                opacity: 1;
+            }
+            100% {
+                opacity: 1;
+            }
+        }
+
+        .flash-once {
+            animation: flash-once 1s ease-in-out;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container-box">
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+    {% for category, message in messages %}
+    <div class="alert alert-{{ category }} alert-dismissible fade show flash-message flash-once" role="alert">
+        {{ message }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+    {% endfor %}
+    {% endif %}
+    {% endwith %}
+
+
+    <h3>🛠 编辑项目 - {{ project.name }}</h3>
+    <input type="hidden" id="is-deadline-passed" value="{{ '1' if project.deadline and project.deadline < now else '0' }}">
+    <div class="mb-3 mt-2">
+        <a href="{{ url_for('admin_panel') }}" class="btn btn-secondary btn-sm">← 返回控制面板</a>
+    </div>
+
+    <form method="POST" enctype="multipart/form-data">
+        <input type="hidden" name="redirect_url" value="{{ request.path }}">
+
+        <div class="mb-3">
+            <label for="name" class="form-label">项目名称</label>
+            <input type="text" class="form-control" id="name" name="name" value="{{ project.name }}" required>
+        </div>
+
+        <div class="mb-3">
+            <label for="code" class="form-label">项目编号</label>
+            <input type="text" class="form-control" id="code" name="code" value="{{ project.code }}" required>
+        </div>
+
+
+        <div class="mb-3">
+            <label for="purchaser" class="form-label">采购人</label>
+            <input type="text" class="form-control" id="purchaser" name="purchaser" value="{{ project.purchaser or '' }}" required>
+        </div>
+
+        <div class="mb-3">
+            <label for="budget_amount" class="form-label">采购金额（元）</label>
+            <input type="number" step="0.01" class="form-control" id="budget_amount" name="budget_amount"
+                   value="{{ project.budget_amount or '' }}" required>
+        </div>
+
+        <div class="mb-3">
+            <label for="start_time" class="form-label">开始时间</label>
+            <input type="datetime-local" class="form-control" id="start_time" name="start_time"
+                value="{{ project.start_time.strftime('%Y-%m-%dT%H:%M') if project.start_time else '' }}" required>
+
+        </div>
+
+        <div class="mb-3">
+            <label for="deadline" class="form-label">截止时间</label>
+            <input type="datetime-local" class="form-control" id="deadline" name="deadline"
+                value="{{ project.deadline.strftime('%Y-%m-%dT%H:%M') if project.deadline else '' }}" required>
+
+        </div>
+        <div id="deadline-hint" class="text-danger small mt-1 d-none"></div>
+        <div class="mb-3">
+            <label for="deposit_amount" class="form-label">保证金金额</label>
+            <input type="number" step="0.01" class="form-control" id="deposit_amount" name="deposit_amount"
+                   value="{{ project.deposit_amount }}" required>
+        </div>
+
+        <div class="mb-3">
+            <label class="form-label">项目组长姓名</label>
+            <div class="input-group">
+                <input type="text" class="form-control" id="leader-name" name="new_leader_name"
+                       value="{{ leader_name }}"
+                       placeholder="输入组长姓名" {% if project.deadline and project.deadline < now %}disabled{% endif %} required>
+
+                <button class="btn btn-outline-secondary" type="button" data-bs-toggle="collapse"
+                        data-bs-target="#leader-list" {% if project.deadline and project.deadline < now %}disabled{% endif %}> 📂 选择</button>
+            </div>
+            <div class="collapse mt-1" id="leader-list">
+                <div class="list-group" id="leader-options" style="max-height: 240px; overflow-y: auto;"></div>
+            </div>
+            <!-- 隐藏邮箱字段 -->
+            <input type="hidden" name="new_leader_email" id="leader-email" value="{{ project.leader_email or '' }}">
+
+            <small class="text-muted">
+                当前组长邮箱：<strong>{{ project.leader_email }}</strong><br>
+                {% if project.deadline and project.deadline < now %}
+                <span class="text-danger">该项目已截止，不可更改组长信息。</span>
+                {% else %}
+                可输入姓名或选择组长，自动填入邮箱。
+                {% endif %}
+            </small>
+        </div>
+
+        <!-- ✅ 项目组成员多选模块 -->
+        <div id="member-section" class="mb-3">
+            <label class="form-label">选择项目组成员（多选）</label>
+            <div class="input-group mb-2">
+                <input type="text" class="form-control" id="member-names-display"
+                       placeholder="已选成员姓名，将自动更新" readonly>
+            </div>
+            <div class="input-group">
+                <input type="text" id="member-search" class="form-control"
+                       placeholder="输入姓名进行模糊搜索" {% if project.deadline and project.deadline < now %}disabled{% endif %}>
+                <button class="btn btn-outline-secondary" type="button" id="toggle-member-list"
+                        {% if project.deadline and project.deadline < now %}disabled{% endif %}> 📂 选择</button>
+            </div>
+            <div id="member-suggestions" class="list-group mt-1"
+                 style="z-index: 10; display: none; max-height: 200px; overflow-y: auto;"></div>
+            <div id="selected-members" class="mt-2 d-flex flex-wrap gap-2"></div>
+            <input type="hidden" name="member_ids" id="member-ids">
+            {% if project.deadline and project.deadline < now %}
+            <small class="text-danger">该项目已截止，不可更改项目组成员。</small>
+            {% endif %}
+        </div>
+
+
+        <div class="mb-3">
+            <label for="file_upload" class="form-label">更换项目文件（可选，最大50MB，仅支持PDF/Word/zip/rar）</label>
+            <input type="file" class="form-control" id="file_upload" name="file_upload" accept=".pdf,.doc,.docx,.zip,.rar">
+            <div id="file-size-error" class="text-danger small mt-1 d-none">❌ 文件大小不能超过 50MB</div>
+            {% if project.file_path %}
+            <p class="mt-2">当前上传文件：<a href="{{ url_for('static', filename=project.file_path) }}" target="_blank">{{
+                project.file_path }}</a></p>
+            {% else %}
+            <p class="mt-2">当前没有上传文件。</p>
+            {% endif %}
+        </div>
+
+
+
+
+
+        <!-- ✅ 标段管理 -->
+        <hr class="my-4">
+        <h5>📦 标段管理</h5>
+
+        {% for sub in sub_projects %}
+        <div class="sub-project-box border rounded p-3 mb-3 bg-light">
+            <!-- ✅ 删除按钮 + 标段标题 -->
+            <div class="d-flex justify-content-between align-items-center mb-2">
+                <strong>📌 标段：{{ sub.segment_name }}</strong>
+                <button type="button" class="btn btn-sm btn-outline-danger" onclick="removeSubProject(this)">
+                    删除此标段
+                </button>
+            </div>
+
+            <input type="hidden" name="sub_project_ids[]" value="{{ sub.id }}">
+
+            <div class="mb-2">
+                <label class="form-label">标段名称</label>
+                <input type="text" class="form-control" name="sub_{{ sub.id }}_segment_name" value="{{ sub.segment_name }}" required>
+            </div>
+
+
+            <div class="mb-2">
+                <label class="form-label">保证金金额</label>
+                <input type="number" step="0.01" class="form-control" name="sub_{{ sub.id }}_deposit_amount" value="{{ sub.deposit_amount }}" required>
+            </div>
+
+            <div class="mb-2">
+                <label class="form-label">更新附件（可选）</label>
+                <input type="file" class="form-control" name="sub_{{ sub.id }}_file_upload" accept=".pdf,.doc,.docx,.zip,.rar">
+                {% if sub.file_path %}
+                <small class="text-muted">当前文件：
+                    <a href="{{ url_for('static', filename=sub.file_path) }}" target="_blank">{{ sub.file_path }}</a>
+                </small>
+                {% endif %}
+            </div>
+
+        </div>
+        {% endfor %}
+        <!-- ✅ 新增标段模块 -->
+        <hr class="my-4">
+        <h5>➕ 添加新标段</h5>
+
+        <div id="new-subprojects-container"></div>
+        <button type="button" class="btn btn-outline-success mb-3" onclick="addNewSubproject()">➕ 添加一个新标段</button>
+
+
+        <input type="hidden" id="segment-count" name="segment_count" value="0">
+        <button type="submit" class="btn btn-primary">提交更新</button>
+    </form>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+
+<script>
+function removeSubProject(button) {
+    const box = button.closest('.sub-project-box');
+    if (box) {
+        box.remove();
+    }
+}
+</script>
+<script>
+    window.addEventListener('DOMContentLoaded', function () {
+        setTimeout(function () {
+            const flashMessages = document.querySelectorAll('.flash-message');
+            flashMessages.forEach(function (msg) {
+                let alert = bootstrap.Alert.getOrCreateInstance(msg);
+                alert.close();
+            });
+        }, 5000);
+    });
+</script>
+<script>
+    const leaderInput = document.getElementById("leader-name");
+    const emailHidden = document.getElementById("leader-email");
+    const listBox = document.getElementById("leader-options");
+    const collapseBox = document.getElementById("leader-list");
+    const collapseBtn = document.querySelector("[data-bs-target='#leader-list']");
+
+    let debounceTimer = null;
+
+    function loadLeaders(keyword = "") {
+        fetch("/api/leaders?q=" + encodeURIComponent(keyword))
+            .then(res => res.json())
+            .then(data => {
+                listBox.innerHTML = "";
+
+                if (data.length === 0) {
+                    const none = document.createElement("div");
+                    none.className = "list-group-item text-muted";
+                    none.textContent = "未找到匹配的项目组长";
+                    listBox.appendChild(none);
+                    return;
+                }
+
+                data.forEach(item => {
+                    const btn = document.createElement("button");
+                    btn.className = "list-group-item list-group-item-action";
+                    btn.type = "button";
+                    btn.textContent = item.name + "（" + item.email + "）";
+                    btn.onclick = () => {
+                        leaderInput.value = item.name;
+                        emailHidden.value = item.email;
+                        bootstrap.Collapse.getInstance(collapseBox)?.hide();  // 选完后收起
+                    };
+                    listBox.appendChild(btn);
+                });
+            });
+    }
+
+    // ✅ 模糊搜索：输入时自动匹配并展开
+    leaderInput.addEventListener("input", () => {
+        const keyword = leaderInput.value.trim();
+        clearTimeout(debounceTimer);
+        debounceTimer = setTimeout(() => {
+            if (keyword) {
+                loadLeaders(keyword);
+                bootstrap.Collapse.getOrCreateInstance(collapseBox).show();
+            } else {
+                bootstrap.Collapse.getOrCreateInstance(collapseBox).hide();
+            }
+        }, 200);
+    });
+
+    // ✅ 点击“选择”按钮：展示全部组长
+    collapseBtn.addEventListener("click", () => {
+        loadLeaders("");  // 加载所有组长
+        bootstrap.Collapse.getOrCreateInstance(collapseBox).toggle();
+    });
+</script>
+
+
+<!-- ✅ 成员多选脚本（局部作用域隔离） -->
+<script>
+    const memberSection = document.getElementById('member-section');
+    const memberSearchInput = memberSection.querySelector('#member-search');
+    const memberSuggestions = memberSection.querySelector('#member-suggestions');
+    const selectedMembersContainer = memberSection.querySelector('#selected-members');
+    const memberIdsInput = memberSection.querySelector('#member-ids');
+    const memberNamesDisplay = memberSection.querySelector('#member-names-display');
+    const toggleMemberListBtn = memberSection.querySelector('#toggle-member-list');
+    const leaderEmailInput = document.getElementById('leader-email');
+
+    let selectedMembers = {{ member_list | tojson }};
+
+    let isListVisible = false;
+
+    function updateSelectedMembersUI() {
+        selectedMembersContainer.innerHTML = '';
+        const isDeadlinePassed = document.getElementById('is-deadline-passed')?.value === '1';
+
+        selectedMembers.forEach(member => {
+            const tag = document.createElement('span');
+            tag.className = 'badge position-relative me-2 ' + (isDeadlinePassed ? 'bg-secondary text-white' : 'bg-primary');
+            tag.textContent = member.name + '（' + member.email + '）';
+
+            if (!isDeadlinePassed) {
+                const closeBtn = document.createElement('button');
+                closeBtn.type = 'button';
+                closeBtn.className = 'btn-close btn-close-white position-absolute top-0 end-0';
+                closeBtn.style.fontSize = '0.7rem';
+                closeBtn.onclick = (e) => {
+                    e.stopPropagation();
+                    selectedMembers = selectedMembers.filter(m => m.email !== member.email);
+                    updateSelectedMembersUI();
+                    updateSuggestionButtonStyles();
+                };
+                tag.appendChild(closeBtn);
+            }
+
+            selectedMembersContainer.appendChild(tag);
+        });
+
+        memberIdsInput.value = selectedMembers.map(m => m.id).join(',');
+        memberNamesDisplay.value = selectedMembers.map(m => m.name).join(', ');
+    }
+
+    function updateSuggestionButtonStyles() {
+        const allButtons = memberSuggestions.querySelectorAll('button');
+        allButtons.forEach(btn => {
+            const email = btn.dataset.email;
+            const name = btn.dataset.name;
+            const isSelected = selectedMembers.some(m => m.email === email);
+            btn.classList.toggle('bg-secondary', isSelected);
+            btn.classList.toggle('text-white', isSelected);
+            btn.textContent = `${name}（${email}）${isSelected ? ' ✔ 已选择' : ''}`;
+        });
+    }
+
+    function loadMemberSuggestions(keyword = '') {
+        fetch("/api/leaders?q=" + encodeURIComponent(keyword))
+            .then(res => res.json())
+            .then(data => {
+                memberSuggestions.innerHTML = '';
+                data.forEach(item => {
+                    if (item.email === leaderEmailInput.value) return;
+
+                    const btn = document.createElement('button');
+                    btn.type = 'button';
+                    btn.className = 'list-group-item list-group-item-action';
+                    btn.dataset.id = item.id;
+                    btn.dataset.name = item.name;
+                    btn.dataset.email = item.email;
+
+                    btn.onclick = () => {
+                        const existing = selectedMembers.find(m => m.email === item.email);
+                        if (existing) {
+                            selectedMembers = selectedMembers.filter(m => m.email !== item.email);
+                        } else {
+                            selectedMembers.push({id: item.id, name: item.name, email: item.email});
+                        }
+                        updateSelectedMembersUI();
+                        updateSuggestionButtonStyles();
+                    };
+
+                    memberSuggestions.appendChild(btn);
+                });
+                memberSuggestions.style.display = data.length > 0 ? 'block' : 'none';
+                isListVisible = true;
+                updateSuggestionButtonStyles();
+            });
+    }
+
+    memberSearchInput.addEventListener('input', () => {
+        loadMemberSuggestions(memberSearchInput.value.trim());
+    });
+
+    toggleMemberListBtn.addEventListener('click', () => {
+        if (isListVisible) {
+            memberSuggestions.style.display = 'none';
+            isListVisible = false;
+        } else {
+            loadMemberSuggestions('');
+        }
+    });
+
+    document.getElementById('leader-name').addEventListener('input', () => {
+        loadMemberSuggestions(memberSearchInput.value.trim());
+    });
+
+    // ✅ 页面加载立即渲染现有成员
+    updateSelectedMembersUI();
+</script>
+<script>
+    const startInput = document.querySelector('input[name="start_time"]');
+    const deadlineInput = document.querySelector('input[name="deadline"]');
+    const deadlineHint = document.getElementById('deadline-hint');
+
+    function validateDeadlineInline() {
+        const startTime = new Date(startInput.value);
+        const deadlineTime = new Date(deadlineInput.value);
+
+        if (deadlineInput.value && startInput.value && deadlineTime <= new Date(startTime.getTime() + 60000)) {
+            deadlineHint.textContent = "❌ 截止时间必须晚于开始时间";
+            deadlineHint.classList.remove('d-none');
+        } else {
+            deadlineHint.textContent = "";
+            deadlineHint.classList.add('d-none');
+        }
+    }
+
+    deadlineInput.addEventListener('input', validateDeadlineInline);
+    startInput.addEventListener('input', validateDeadlineInline);
+</script>
+<script>
+function validateFileSize(input) {
+    const maxSize = 50 * 1024 * 1024;  // 50MB
+    const errorDiv = document.getElementById('file-size-error');
+    if (input.files.length > 0 && input.files[0].size > maxSize) {
+        errorDiv.classList.remove('d-none');
+        input.value = "";  // 清空选择
+    } else {
+        errorDiv.classList.add('d-none');
+    }
+}
+</script>
+
+<script>
+let newSegmentCounter = 0;
+
+function addNewSubproject() {
+    const container = document.getElementById("new-subprojects-container");
+    const wrapper = document.createElement("div");
+    wrapper.className = "sub-project-box border rounded p-3 mb-4 bg-light";
+    wrapper.innerHTML = `
+        <div class="d-flex justify-content-between align-items-center mb-2">
+            <strong>🆕 新标段</strong>
+            <button type="button" class="btn btn-sm btn-outline-danger" onclick="removeSubProject(this)">删除此标段</button>
+        </div>
+        <div class="mb-2">
+            <label class="form-label">标段名称</label>
+            <input type="text" class="form-control" name="segment_${newSegmentCounter}_name" placeholder="请输入标段名称">
+        </div>
+        <div class="mb-2">
+            <label class="form-label">保证金金额</label>
+            <input type="number" step="0.01" class="form-control" name="segment_${newSegmentCounter}_deposit_amount" placeholder="请输入金额">
+        </div>
+        <div class="mb-2">
+            <label class="form-label">上传附件（可选）</label>
+            <input type="file" class="form-control" name="segment_${newSegmentCounter}_file_upload" accept=".pdf,.doc,.docx,.zip,.rar">
+        </div>
+        <hr>
+    `;
+    container.appendChild(wrapper);
+    newSegmentCounter++;
+    document.getElementById("segment-count").value = newSegmentCounter;
+}
+</script>
+
+
+
+
+</body>
+</html>

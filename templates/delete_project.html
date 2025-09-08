@@ -1,0 +1,61 @@
+<!--<!DOCTYPE html>-->
+<!--<html lang="zh-CN">-->
+<!--<head>-->
+<!--    <meta charset="UTF-8">-->
+<!--    <link rel="icon" href="{{ url_for('static', filename='bid.png') }}" type="image/png">-->
+<!--    <title>删除项目 - 云南国合</title>-->
+<!--    <meta name="viewport" content="width=device-width, initial-scale=1">-->
+<!--    &lt;!&ndash; Bootstrap 5 CDN &ndash;&gt;-->
+<!--    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">-->
+<!--</head>-->
+<!--<body>-->
+<!--<div class="container mt-4">-->
+<!--    <h2 class="mb-4">删除项目 - {{ project.name }}</h2>-->
+
+<!--    <div class="alert alert-warning">-->
+<!--        确定删除项目 "<strong>{{ project.name }}</strong>" 吗？此操作不可恢复！-->
+<!--    </div>-->
+
+<!--    <form method="POST">-->
+<!--        <button type="submit" class="btn btn-danger">删除项目</button>-->
+<!--        <a href="{{ url_for('admin_panel') }}" class="btn btn-outline-secondary">取消</a>-->
+<!--    </form>-->
+<!--</div>-->
+
+<!--<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>-->
+<!--</body>-->
+<!--</html>-->
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <link rel="icon" href="{{ url_for('static', filename='bid.png') }}" type="image/png">
+    <title>删除项目 - 云南国合</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <!-- Bootstrap 5 CDN -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body>
+<div class="container mt-4">
+    <h2 class="mb-4">⚠️ 删除项目 - {{ project.name }}</h2>
+
+    <div class="alert alert-warning">
+        <p>您正在尝试删除整个项目：<strong>{{ project.name }}</strong>（编号：{{ project.code }}）。</p>
+        <ul>
+            <li>该项目下共有 <strong>{{ project.subprojects|length }}</strong> 个标段。</li>
+            <li>项目附件、子标段附件将被<strong>一并删除</strong>（本地 + OSS 云盘）。</li>
+            <li>所有投标记录和邮件发送记录将被删除。</li>
+            <li>系统将自动导出：<strong>邮件记录备份文件 + 全局备份</strong>。</li>
+        </ul>
+        <strong class="text-danger">⚠️ 此操作不可恢复，请谨慎操作！</strong>
+    </div>
+
+    <form method="POST">
+        <button type="submit" class="btn btn-danger">✅ 确认删除整个项目</button>
+        <a href="{{ url_for('admin_panel') }}" class="btn btn-outline-secondary">取消操作</a>
+    </form>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
